@@ -62,7 +62,6 @@ contract PendleUniversalOracle is BaseAdapter {
         (IStandardizedYield sy, IPPrincipalToken pt,) = IPMarket(_pendleMarket).readTokens();
         (, address asset,) = sy.assetInfo();
 
-        // Note: we allow using any asset pricing to any token.
         if (_base == address(pt)) {
             if (_quote == address(sy)) {
                 getRate = PendlePYOracleLib.getPtToSyRate;
