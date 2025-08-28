@@ -44,6 +44,8 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
 
     address public immutable pendleOracle;
 
+    event PairAdded(address indexed pendleMarket, address indexed base, address indexed quote, uint32 twapWindow);
+
     constructor(address _pendleOracle) {
         if (_pendleOracle == address(0)) {
             revert Errors.ZeroAddress();
@@ -114,6 +116,8 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
 
         _configuredPairs[_base][_quote] = pairParams;
         _configuredPairs[_quote][_base] = pairParams;
+
+        emit PairAdded(_pendleMarket, _base, _quote, _twapWindow);
     }
 
     /// @notice Get a quote by calling the Pendle oracle.

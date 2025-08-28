@@ -12,7 +12,7 @@ import {ForkTest} from "test/utils/ForkTest.sol";
 import {PendleAllInOneOracle} from "src/adapter/pendle/PendleAllInOneOracle.sol";
 import {Errors} from "src/lib/Errors.sol";
 
-contract PendleOracleForkTest is ForkTest {
+contract PendleAllInOneOracleForkTest is ForkTest {
     PendleAllInOneOracle oracle;
     /// @dev 1%
     uint256 constant REL_PRECISION = 0.01e18;
