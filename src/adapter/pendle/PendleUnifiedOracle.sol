@@ -11,13 +11,13 @@ import {BaseAdapter, Errors, IPriceOracle} from "../BaseAdapter.sol";
 import {ScaleUtils, Scale} from "../../lib/ScaleUtils.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-/// @title PendleAllInOneOracle
+/// @title PendleUnifiedOracle
 /// @custom:security-contact security@euler.xyz
 /// @author Euler Labs (https://www.eulerlabs.com/)
 /// @notice Adapter for Pendle PT and LP Oracle.
-contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
+contract PendleUnifiedOracle is BaseAdapter, Ownable2Step {
     /// @inheritdoc IPriceOracle
-    string public constant name = "PendleAllInOneOracle";
+    string public constant name = "PendleUnifiedOracle";
     /// @dev The minimum length of the TWAP window.
     uint32 internal constant MIN_TWAP_WINDOW = 5 minutes;
     /// @dev The maximum length of the TWAP window.
@@ -30,10 +30,8 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
         address pendleMarket;
         /// @notice The desired length of the twap window.
         uint32 twapWindow;
-        /// @notice The address of the base asset, the PT address.
-        address base;
-        /// @notice The address of the quote asset, the SY or underlying address.
-        address quote;
+        /// @notice The flag indicating the direction of the price. False when base/quote, true - quote/base
+        bool inverse;
         /// @notice The PendlePYOracleLib function to call.
         function (IPMarket, uint32) view returns (uint256) getRate;
         /// @notice The scale factors used for decimal conversions.
@@ -63,6 +61,11 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
     /// @param _quote The address of the SY token or the underlying asset.
     /// @param _twapWindow The desired length of the twap window.
     function addPair(address _pendleMarket, address _base, address _quote, uint32 _twapWindow) external onlyOwner {
+        //Verify that the pair is not already initialized.
+        if (_configuredPairs[_base][_quote].pendleMarket != address(0)) {
+            revert Errors.PriceOracle_AlreadyInitialized();
+        }
+
         // Verify that the TWAP window is sufficiently long.
         if (_twapWindow < MIN_TWAP_WINDOW || _twapWindow > MAX_TWAP_WINDOW) {
             revert Errors.PriceOracle_InvalidConfiguration();
@@ -103,9 +106,8 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
         }
 
         pairParams.pendleMarket = _pendleMarket;
-        pairParams.base = _base;
-        pairParams.quote = _quote;
         pairParams.twapWindow = _twapWindow;
+        pairParams.inverse = false;
 
         // We don't need to worry about decimals base and quote decimals scaling,
         // Pendle formula to access LP (rawX) in SY (rawY)
@@ -115,6 +117,8 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
         pairParams.scale = ScaleUtils.calcScale(0, 0, FEED_DECIMALS);
 
         _configuredPairs[_base][_quote] = pairParams;
+
+        pairParams.inverse = true;
         _configuredPairs[_quote][_base] = pairParams;
 
         emit PairAdded(_pendleMarket, _base, _quote, _twapWindow);
@@ -128,28 +132,20 @@ contract PendleAllInOneOracle is BaseAdapter, Ownable2Step {
     /// @return The converted amount using the Pendle oracle.
     function _getQuote(uint256 inAmount, address _base, address _quote) internal view override returns (uint256) {
         PairParams memory pairParams = _configuredPairs[_base][_quote];
-        if (pairParams.base == address(0) || pairParams.quote == address(0)) {
+        if (pairParams.pendleMarket == address(0)) {
             revert Errors.PriceOracle_InvalidConfiguration();
         }
 
-        bool inverse = ScaleUtils.getDirectionOrRevert(_base, pairParams.base, _quote, pairParams.quote);
         uint256 unitPrice = pairParams.getRate(IPMarket(pairParams.pendleMarket), pairParams.twapWindow);
-        return ScaleUtils.calcOutAmount(inAmount, unitPrice, pairParams.scale, inverse);
+        return ScaleUtils.calcOutAmount(inAmount, unitPrice, pairParams.scale, pairParams.inverse);
     }
 
     function getConfiguredPairs(address _base, address _quote)
         external
         view
-        returns (
-            /// @notice The address of the Pendle market.
-            address pendleMarket,
-            uint32 twapWindow,
-            address base,
-            address quote,
-            Scale scale
-        )
+        returns (address pendleMarket, uint32 twapWindow, bool inverse, Scale scale)
     {
         PairParams memory pairParams = _configuredPairs[_base][_quote];
-        return (pairParams.pendleMarket, pairParams.twapWindow, pairParams.base, pairParams.quote, pairParams.scale);
+        return (pairParams.pendleMarket, pairParams.twapWindow, pairParams.inverse, pairParams.scale);
     }
 }

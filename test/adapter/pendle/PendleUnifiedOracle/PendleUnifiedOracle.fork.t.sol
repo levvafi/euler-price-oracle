@@ -9,17 +9,17 @@ import {
 } from "test/adapter/pendle/PendleAddresses.sol";
 import {EETH, EBTC, USDC, USDE, WBTC} from "test/utils/EthereumAddresses.sol";
 import {ForkTest} from "test/utils/ForkTest.sol";
-import {PendleAllInOneOracle} from "src/adapter/pendle/PendleAllInOneOracle.sol";
+import {PendleUnifiedOracle} from "src/adapter/pendle/PendleUnifiedOracle.sol";
 import {Errors} from "src/lib/Errors.sol";
 
-contract PendleAllInOneOracleForkTest is ForkTest {
-    PendleAllInOneOracle oracle;
+contract PendleUnifiedOracleForkTest is ForkTest {
+    PendleUnifiedOracle oracle;
     /// @dev 1%
     uint256 constant REL_PRECISION = 0.01e18;
 
     function setUp() public {
         _setUpFork(23238500);
-        oracle = new PendleAllInOneOracle(PENDLE_ORACLE);
+        oracle = new PendleUnifiedOracle(PENDLE_ORACLE);
     }
 
     /// @dev This market is active. 1 PT-sUSDe0925 = 0.8314 SY-sUSDe. Oracle has no slippage.
