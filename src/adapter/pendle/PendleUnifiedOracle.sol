@@ -140,7 +140,7 @@ contract PendleUnifiedOracle is BaseAdapter, Ownable2Step {
         return ScaleUtils.calcOutAmount(inAmount, unitPrice, pairParams.scale, pairParams.inverse);
     }
 
-    function getConfiguredPairs(address _base, address _quote)
+    function getConfiguredPair(address _base, address _quote)
         external
         view
         returns (address pendleMarket, uint32 twapWindow, bool inverse, Scale scale)
